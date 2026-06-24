@@ -1,5 +1,7 @@
 # Live Sports & Event Broadcaster Guide
 
+[![CI](https://github.com/medodir1000/helliptvscript/actions/workflows/ci.yml/badge.svg)](https://github.com/medodir1000/helliptvscript/actions/workflows/ci.yml)
+
 A universal, category-aware "where to watch" guide. Each URL (`/:slug`) renders
 a single event or channel from Supabase, with SEO meta + JSON-LD, a live
 countdown, a real connection test, and internal links to related events.
