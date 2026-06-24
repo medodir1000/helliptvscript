@@ -1,0 +1,4 @@
+# Supabase's edge gateway serves the proxied function body as text/plain.
+# Force the correct sitemap content type at the public URL (where Google fetches).
+/sitemap.xml
+  Content-Type: application/xml; charset=utf-8

@@ -1,0 +1,14 @@
+<svg viewBox="0 0 190 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HellIPTV">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#720eec" />
+      <stop offset="1" stop-color="#c000ff" />
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="12" fill="url(#lg)" />
+  <path d="M19 16.5v15l13-7.5z" fill="#ffffff" />
+  <circle cx="37" cy="11" r="5" fill="#16a34a" stroke="#ffffff" stroke-width="2" />
+  <text x="60" y="33" font-family="Roboto Slab, Georgia, serif" font-size="26" font-weight="800" letter-spacing="-0.5">
+    <tspan fill="#0e0e12">Hell</tspan><tspan fill="#720eec">IPTV</tspan>
+  </text>
+</svg>

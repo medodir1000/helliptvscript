@@ -1,0 +1,8 @@
+# /sitemap.xml is served dynamically by the Supabase Edge Function so it always
+# reflects the latest fixtures. Proxy (forced 200!) keeps it on the site's own
+# host — Google requires a sitemap to live on the same host as its URLs.
+/sitemap.xml    https://httyqjpcafgdhrgoymwh.supabase.co/functions/v1/sitemap    200!
+
+# Netlify SPA fallback: every other path serves index.html so React Router can
+# resolve /:slug client-side. (Vercel: use a rewrites rule in vercel.json.)
+/*    /index.html   200
