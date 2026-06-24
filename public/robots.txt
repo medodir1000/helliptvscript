@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://live.helliptv.com/sitemap.xml
+Sitemap: https://blog.helliptv.com/sitemap.xml

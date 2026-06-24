@@ -1,7 +1,17 @@
 // ===========================================================================
-// generate-sitemap.js — build public/sitemap.xml from the fixtures table.
-// Run: `node scripts/generate-sitemap.js`  (or `npm run sitemap`).
-// Shards into a sitemap index automatically past 45k URLs.
+// generate-sitemap.js — build dist/sitemap.xml from published blog posts +
+// fixtures + the static section routes.
+//
+// Runs as part of `npm run build` (AFTER `vite build`) so the deployed output
+// contains a REAL /sitemap.xml file. On Railway the Netlify `_redirects` proxy
+// does not work, so a real static file is the reliable way to serve a sitemap
+// that Google can read.
+//
+// Reads via supabase-js (same client/schema the app uses). Degrades gracefully:
+// if the DB env is missing or a query fails, it still emits the static routes
+// and never fails the build.
+//
+// Run standalone: `npm run sitemap` (after a build, so dist/ exists).
 // ===========================================================================
 
 try {
@@ -11,15 +21,31 @@ try {
 }
 
 import { createClient } from '@supabase/supabase-js'
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-const ORIGIN = (process.env.SITE_ORIGIN || 'https://live.helliptv.com').replace(/\/$/, '')
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+const ORIGIN = (
+  process.env.VITE_SITE_ORIGIN ||
+  process.env.SITE_ORIGIN ||
+  'https://blog.helliptv.com'
+).replace(/\/$/, '')
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url))
+const OUT_DIR = fileURLToPath(new URL('../dist/', import.meta.url))
 const MAX_PER_FILE = 45000
+
+// Always-present routes (homepage, blog index, section hubs, help centre).
+const STATIC_ROUTES = [
+  { path: '/', changefreq: 'hourly' },
+  { path: '/blog', changefreq: 'daily' },
+  { path: '/matches', changefreq: 'daily' },
+  { path: '/help-center', changefreq: 'weekly' },
+  { path: '/football', changefreq: 'daily' },
+  { path: '/movies-series', changefreq: 'daily' },
+  { path: '/combat-sports', changefreq: 'daily' },
+  { path: '/tennis-rugby', changefreq: 'daily' },
+]
 
 const escapeXml = (s) =>
   String(s).replace(
@@ -50,47 +76,62 @@ const chunk = (arr, n) => {
   return out
 }
 
-async function readFixtures() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.warn('[sitemap] no Supabase env — emitting static routes only')
-    return []
-  }
+async function readRows(supabase, table, build) {
   try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
-    const { data, error } = await supabase
-      .from('fixtures')
-      .select('slug')
-      .order('date_time', { ascending: false })
+    const { data, error } = await build(supabase.from(table))
     if (error) throw error
     return data || []
   } catch (err) {
-    console.warn('[sitemap] could not read fixtures:', err.message)
+    console.warn(`[sitemap] could not read ${table}:`, err.message)
     return []
   }
 }
 
 async function main() {
   const today = new Date().toISOString().slice(0, 10)
-  const fixtures = await readFixtures()
+
+  let posts = []
+  let fixtures = []
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
+    posts = await readRows(supabase, 'posts', (q) =>
+      q.select('slug, published_at').eq('status', 'published').order('published_at', { ascending: false }),
+    )
+    fixtures = await readRows(supabase, 'fixtures', (q) =>
+      q.select('slug').order('date_time', { ascending: false }),
+    )
+  } else {
+    console.warn('[sitemap] no Supabase env — emitting static routes only')
+  }
 
   const urls = [
-    { loc: `${ORIGIN}/`, lastmod: today, changefreq: 'hourly' },
-    ...fixtures.map((f) => ({ loc: `${ORIGIN}/${f.slug}`, lastmod: today })),
+    ...STATIC_ROUTES.map((r) => ({ loc: `${ORIGIN}${r.path}`, lastmod: today, changefreq: r.changefreq })),
+    ...posts.map((p) => ({
+      loc: `${ORIGIN}/blog/${p.slug}`,
+      lastmod: (p.published_at || today).slice(0, 10),
+      changefreq: 'weekly',
+    })),
+    ...fixtures.map((f) => ({ loc: `${ORIGIN}/${f.slug}`, lastmod: today, changefreq: 'daily' })),
   ]
 
+  if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true })
+
   if (urls.length <= MAX_PER_FILE) {
-    writeFileSync(join(PUBLIC_DIR, 'sitemap.xml'), buildUrlset(urls))
-    console.log(`[sitemap] wrote sitemap.xml — ${urls.length} URLs`)
+    writeFileSync(join(OUT_DIR, 'sitemap.xml'), buildUrlset(urls))
+    console.log(
+      `[sitemap] wrote dist/sitemap.xml — ${urls.length} URLs (${posts.length} posts, ${fixtures.length} fixtures) @ ${ORIGIN}`,
+    )
   } else {
     const parts = chunk(urls, MAX_PER_FILE)
     const files = parts.map((_, i) => `sitemap-${i + 1}.xml`)
-    parts.forEach((part, i) => writeFileSync(join(PUBLIC_DIR, files[i]), buildUrlset(part)))
-    writeFileSync(join(PUBLIC_DIR, 'sitemap.xml'), buildIndex(files, today))
+    parts.forEach((part, i) => writeFileSync(join(OUT_DIR, files[i]), buildUrlset(part)))
+    writeFileSync(join(OUT_DIR, 'sitemap.xml'), buildIndex(files, today))
     console.log(`[sitemap] wrote index + ${files.length} shards — ${urls.length} URLs`)
   }
 }
 
 main().catch((e) => {
-  console.error('[sitemap] failed:', e)
-  process.exit(1)
+  // A sitemap problem must never break the deploy — log and exit cleanly.
+  console.error('[sitemap] failed (non-fatal):', e)
+  process.exit(0)
 })

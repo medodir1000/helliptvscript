@@ -6,7 +6,7 @@
   "description": "Worldwide Live Sports & Event Broadcaster Guide",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-sitemap.js",
     "preview": "vite preview",
     "ingest": "node scripts/fetch-fixtures.js",
     "sitemap": "node scripts/generate-sitemap.js"
