@@ -58,7 +58,7 @@ export default function Hero({ featured }) {
               className="hover-pulse group relative block overflow-hidden rounded-3xl border border-ink-700"
             >
               <div className="aspect-video">
-                <EventCover fixture={featured} featured overlay={false} />
+                <EventCover fixture={featured} featured overlay={false} priority />
               </div>
               <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/85 via-black/30 to-transparent p-4 sm:p-5">
                 <div className="min-w-0">

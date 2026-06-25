@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { getCategoryTheme } from '../utils/categories.js'
+import { optimizedImage, coverSrcSet } from '../utils/image.js'
 
 /**
  * Poster-style cover. A category-coloured base (or the real/AI photo) with a
@@ -8,10 +8,14 @@ import { getCategoryTheme } from '../utils/categories.js'
  * The image fades in over the base; the gradient stays as the fallback.
  * Pass `overlay={false}` where the title is rendered elsewhere (article h1).
  */
-export default function EventCover({ fixture, featured = false, overlay = true }) {
+export default function EventCover({ fixture, featured = false, overlay = true, priority = false }) {
   const theme = getCategoryTheme(fixture.category)
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
+
+  const imgSrc = optimizedImage(fixture.image_url, { width: featured ? 1280 : 768 })
+  const imgSrcSet = coverSrcSet(fixture.image_url)
+  const imgSizes = featured ? '(min-width: 1024px) 1024px, 100vw' : '(min-width: 640px) 400px, 100vw'
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -22,16 +26,19 @@ export default function EventCover({ fixture, featured = false, overlay = true }
       />
 
       {fixture.image_url && !failed && (
-        <motion.img
-          src={fixture.image_url}
+        <img
+          src={imgSrc}
+          srcSet={imgSrcSet}
+          sizes={imgSrcSet ? imgSizes : undefined}
           alt={fixture.event_title}
-          loading="lazy"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: loaded ? 1 : 0 }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
+          loading={priority ? 'eager' : 'lazy'}
+          {...(priority ? { fetchpriority: 'high' } : {})}
+          decoding="async"
           onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}
-          className="absolute inset-0 h-full w-full object-cover"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
+            priority || loaded ? 'opacity-100' : 'opacity-0'
+          }`}
         />
       )}
 

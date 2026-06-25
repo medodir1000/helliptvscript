@@ -101,6 +101,7 @@ export default function BlogPost() {
             fixture={{ event_title: post.title, category: post.category, image_url: post.cover_image }}
             featured
             overlay={false}
+            priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex flex-col items-start gap-2 p-5 sm:p-7">
